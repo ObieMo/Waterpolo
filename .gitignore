@@ -47,6 +47,3 @@ Task1-ActionSpotting/CALF/models/
 Task1-ActionSpotting/CALF/outputs/
 Task1-ActionSpotting/CALF/inference_waterpolo/outputs/
 
-# Feature extraction outputs
-features/
-
