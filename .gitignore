@@ -1,0 +1,52 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# IDE / editor
+.vscode/
+.idea/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Local datasets and videos
+Videos/
+data/
+dataset/
+datasets/
+
+# Large generated features / arrays
+*.npy
+*.npz
+
+# Model artifacts
+*.pth
+*.pth.tar
+*.pt
+*.ckpt
+*.bin
+
+# Archives
+*.zip
+*.tar
+*.gz
+
+# CALF training outputs
+Task1-ActionSpotting/CALF/models/
+Task1-ActionSpotting/CALF/outputs/
+Task1-ActionSpotting/CALF/inference_waterpolo/outputs/
+
+# Feature extraction outputs
+features/
+

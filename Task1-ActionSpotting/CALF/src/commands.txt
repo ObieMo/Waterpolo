@@ -1,0 +1,14 @@
+convert checkpoint
+
+cd "C:\Users\Obie\Desktop\Thesis\V2 Pipline\SoccerNetv2-DevKit-main\Task1-ActionSpotting\CALF"
+python .\src\convert_checkpoint_waterpolo.py `
+  --source_checkpoint ".\models\CALF_benchmark\model.pth.tar"
+
+
+train
+python src/main_waterpolo.py `
+  --dataset_path "C:\Users\Obie\Desktop\testwater" `
+  --features features.npy `
+  --labels_file labels.json `
+  --model_name CALF_benchmark_waterpolo_init `
+  --max_num_worker 0

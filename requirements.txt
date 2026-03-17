@@ -1,0 +1,13 @@
+numpy<2
+tqdm
+scikit-learn
+opencv-python==3.4.11.41
+imutils
+scikit-video
+ffmpy
+moviepy==1.0.3
+SoccerNet
+tensorflow==2.3.0
+protobuf<=3.20.3
+torch==1.6.0
+torchvision==0.7.0

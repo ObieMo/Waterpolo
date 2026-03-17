@@ -1,0 +1,10 @@
+cd "C:\Users\Obie\Desktop\Thesis\V2 Pipline\SoccerNetv2-DevKit-main\Task1-ActionSpotting\CALF"
+python .\inference_waterpolo\main.py `
+  --features_path "C:\Users\Obie\Desktop\testwater\match1_ResNET_TF2_PCA512.npy" `
+  --model_name CALF_benchmark_waterpolo_init `
+  --GPU -1
+
+python .\inference_waterpolo\main.py `
+  --features_path "C:\Users\Obie\Desktop\testwater\match1_ResNET_TF2_PCA512.npy" `
+  --model_name CALF_benchmark_waterpolo_init `
+  --GPU 1
