@@ -114,7 +114,7 @@ Train or resume the waterpolo spotting model with:
 
 ```powershell
 python src\main_waterpolo.py `
-  --dataset_path "C:\Users\Obie\Desktop\testwater" `
+  --dataset_path "YOUR PATH" `
   --model_name CALF_benchmark_waterpolo_init `
   --load_weights model `
   --max_epochs 1001 `

@@ -17,10 +17,10 @@ INVERSE_EVENT_DICTIONARY_V2 = {
 # Col 1 reuses SoccerNet "Shots off target" profile for MissedShot.
 K_V2 = torch.FloatTensor(
     [
-        [-20, -8],
-        [-10, -4],
-        [60, 4],
-        [90, 8],
+        [-10, -10],
+        [-5, -5],
+        [5, 5],
+        [10, 10],
     ]
 )
 

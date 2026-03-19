@@ -47,3 +47,5 @@ Task1-ActionSpotting/CALF/models/
 Task1-ActionSpotting/CALF/outputs/
 Task1-ActionSpotting/CALF/inference_waterpolo/outputs/
 
+# Local command notes
+Task1-ActionSpotting/CALF/commands.txt

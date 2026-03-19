@@ -51,7 +51,6 @@ def trainer(
             "optimizer": optimizer.state_dict(),
         }
         os.makedirs(os.path.join("models", model_name), exist_ok=True)
-        torch.save(state, os.path.join(checkpoint_dir, f"epoch-{epoch + 1:04d}.pth.tar"))
         torch.save(state, os.path.join(checkpoint_dir, "latest.pth.tar"))
 
         is_better = loss_validation < best_loss
@@ -194,7 +193,7 @@ def test(dataloader, model, model_name, save_predictions=False):
     for target, detection in zip(spotting_groundtruth_visibility, spotting_predictions):
         target_numpy = target.numpy()
         targets_numpy.append(target_numpy)
-        detections_numpy.append(NMS(detection.numpy(), 20 * model.framerate))
+        detections_numpy.append(NMS(detection.numpy(), 5 * model.framerate))
         closest_numpy = np.zeros(target_numpy.shape) - 1
         for c in np.arange(target_numpy.shape[-1]):
             indexes = np.where(target_numpy[:, c] != 0)[0].tolist()
