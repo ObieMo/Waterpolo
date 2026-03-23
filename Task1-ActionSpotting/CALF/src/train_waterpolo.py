@@ -22,6 +22,7 @@ def trainer(
     criterion,
     weights,
     model_name,
+    writer=None,
     max_epochs=1,
     evaluation_frequency=20,
     start_epoch=0,
@@ -43,6 +44,11 @@ def trainer(
         loss_validation = train(
             val_loader, model, criterion, weights, optimizer, epoch + 1, train=False
         )
+
+        if writer is not None:
+            writer.add_scalar("loss/train", loss_training, epoch + 1)
+            writer.add_scalar("loss/val", loss_validation, epoch + 1)
+            writer.add_scalar("optimizer/lr", optimizer.param_groups[0]["lr"], epoch + 1)
 
         state = {
             "epoch": epoch + 1,
@@ -66,6 +72,8 @@ def trainer(
                 str(epoch + 1),
                 str(performance_validation),
             )
+            if writer is not None:
+                writer.add_scalar("mAP/val", performance_validation, epoch + 1)
 
             is_better_metric = performance_validation > best_metric
             best_metric = max(performance_validation, best_metric)
@@ -80,6 +88,8 @@ def trainer(
                     str(epoch + 1),
                     str(performance_test),
                 )
+                if writer is not None:
+                    writer.add_scalar("mAP/test", performance_test, epoch + 1)
 
         prev_lr = optimizer.param_groups[0]["lr"]
         scheduler.step(loss_validation)
