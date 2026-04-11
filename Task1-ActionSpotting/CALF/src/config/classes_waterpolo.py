@@ -23,6 +23,3 @@ K_V2 = torch.FloatTensor(
         [10, 10],
     ]
 )
-
-if torch.cuda.is_available():
-    K_V2 = K_V2.cuda()

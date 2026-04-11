@@ -24,7 +24,7 @@ np.random.seed(0)
 
 def resolve_load_weights_path(model_name, load_weights):
     if load_weights in (None, ""):
-        return load_weights
+        return None
     return os.path.join("models", model_name, "checkpoints", f"{load_weights}.pth.tar")
 
 
@@ -32,6 +32,7 @@ def main(args):
     logging.info("Parameters:")
     for arg in vars(args):
         logging.info(arg.rjust(15) + " : " + str(getattr(args, arg)))
+    logging.info("Resolved load_weights: %s", args.load_weights)
 
     writer = None
     if args.tensorboard:
@@ -87,6 +88,13 @@ def main(args):
             receptive_field=args.receptive_field * args.framerate,
         )
 
+        if not args.test_only:
+            logging.info("Train matches: %s", dataset_Train.match_names)
+            logging.info("Valid matches: %s", dataset_Valid.match_names)
+        logging.info("Test matches: %s", dataset_Test.match_names)
+
+        device = torch.device("cuda" if args.GPU >= 0 and torch.cuda.is_available() else "cpu")
+
         model = ContextAwareModel(
             weights=args.load_weights,
             input_size=args.num_features,
@@ -96,7 +104,7 @@ def main(args):
             receptive_field=args.receptive_field * args.framerate,
             num_detections=dataset_Test.num_detections,
             framerate=args.framerate,
-        ).cuda()
+        ).to(device)
         logging.info(model)
         total_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
         logging.info("Total number of parameters: " + str(total_params))
@@ -143,7 +151,7 @@ def main(args):
 
             start_epoch = 0
             if args.load_weights is not None:
-                checkpoint = torch.load(args.load_weights)
+                checkpoint = torch.load(args.load_weights, map_location=device)
                 restore_optimizer = "optimizer" in checkpoint and "converted_from" not in checkpoint
                 if restore_optimizer:
                     try:
@@ -173,17 +181,27 @@ def main(args):
                 [criterion_segmentation, criterion_spotting],
                 [args.loss_weight_segmentation, args.loss_weight_detection],
                 model_name=args.model_name,
+                device=device,
                 writer=writer,
                 max_epochs=args.max_epochs,
                 evaluation_frequency=args.evaluation_frequency,
                 start_epoch=start_epoch,
             )
 
-        checkpoint = torch.load(os.path.join("models", args.model_name, "model.pth.tar"))
-        model.load_state_dict(checkpoint["state_dict"], strict=False)
+        if args.load_weights is None and args.test_only:
+            logging.info("No checkpoint provided in test_only mode; evaluating random initialization.")
+        else:
+            checkpoint = torch.load(
+                os.path.join("models", args.model_name, "model.pth.tar"), map_location=device
+            )
+            model.load_state_dict(checkpoint["state_dict"], strict=False)
 
         a_mAP, a_mAP_per_class = test(
-            test_loader, model=model, model_name=args.model_name, save_predictions=True
+            test_loader,
+            model=model,
+            model_name=args.model_name,
+            save_predictions=True,
+            device=device,
         )
         logging.info("Best performance at end of training ")
         logging.info("Average mAP: " + str(a_mAP))

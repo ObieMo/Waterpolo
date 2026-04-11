@@ -83,7 +83,7 @@ class ContextAwareModel(nn.Module):
     def load_weights(self, weights=None):
         if(weights is not None):
             print("=> loading checkpoint '{}'".format(weights))
-            checkpoint = torch.load(weights)
+            checkpoint = torch.load(weights, map_location="cpu")
             self.load_state_dict(checkpoint['state_dict'], strict=False)
             print("=> loaded checkpoint '{}' (epoch {})"
                   .format(weights, checkpoint['epoch']))

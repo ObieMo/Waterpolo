@@ -22,6 +22,7 @@ def trainer(
     criterion,
     weights,
     model_name,
+    device,
     writer=None,
     max_epochs=1,
     evaluation_frequency=20,
@@ -39,10 +40,10 @@ def trainer(
         best_model_path = os.path.join("models", model_name, "model.pth.tar")
 
         loss_training = train(
-            train_loader, model, criterion, weights, optimizer, epoch + 1, train=True
+            train_loader, model, criterion, weights, optimizer, epoch + 1, device, train=True
         )
         loss_validation = train(
-            val_loader, model, criterion, weights, optimizer, epoch + 1, train=False
+            val_loader, model, criterion, weights, optimizer, epoch + 1, device, train=False
         )
 
         if writer is not None:
@@ -66,7 +67,7 @@ def trainer(
             torch.save(state, best_model_path)
 
         if epoch % evaluation_frequency == 0 and epoch != 0:
-            performance_validation = test(val_metric_loader, model, model_name)[0]
+            performance_validation = test(val_metric_loader, model, model_name, device=device)[0]
             logging.info(
                 "Validation performance at epoch %s -> %s",
                 str(epoch + 1),
@@ -81,7 +82,7 @@ def trainer(
             if is_better_metric and evaluation_frequency <= max_epochs:
                 torch.save(state, best_model_path)
                 performance_test = test(
-                    test_loader, model, model_name, save_predictions=True
+                    test_loader, model, model_name, save_predictions=True, device=device
                 )[0]
                 logging.info(
                     "Test performance at epoch %s -> %s",
@@ -102,13 +103,13 @@ def trainer(
             break
 
 
-def train(dataloader, model, criterion, weights, optimizer, epoch, train=False):
+def train(dataloader, model, criterion, weights, optimizer, epoch, device, train=False):
     batch_time = AverageMeter()
     data_time = AverageMeter()
     losses = AverageMeter()
     losses_segmentation = AverageMeter()
     losses_spotting = AverageMeter()
-
+    
     if train:
         model.train()
     else:
@@ -119,9 +120,9 @@ def train(dataloader, model, criterion, weights, optimizer, epoch, train=False):
         for i, (feats, labels, targets) in t:
             data_time.update(time.time() - end)
 
-            feats = feats.cuda()
-            labels = labels.cuda().float()
-            targets = targets.cuda().float()
+            feats = feats.to(device)
+            labels = labels.to(device).float()
+            targets = targets.to(device).float()
 
             feats = feats.unsqueeze(1)
 
@@ -138,6 +139,7 @@ def train(dataloader, model, criterion, weights, optimizer, epoch, train=False):
             if train:
                 optimizer.zero_grad()
                 loss.backward()
+                torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
                 optimizer.step()
 
             batch_time.update(time.time() - end)
@@ -159,7 +161,7 @@ def train(dataloader, model, criterion, weights, optimizer, epoch, train=False):
     return losses.avg
 
 
-def test(dataloader, model, model_name, save_predictions=False):
+def test(dataloader, model, model_name, save_predictions=False, device=None):
     data_time = AverageMeter()
 
     spotting_groundtruth_visibility = []
@@ -169,33 +171,37 @@ def test(dataloader, model, model_name, save_predictions=False):
     receptive_field = model.receptive_field
 
     model.eval()
+    if device is None:
+        device = next(model.parameters()).device
 
     end = time.time()
-    with tqdm(enumerate(dataloader), total=len(dataloader), ncols=120) as t:
-        for i, (feat_clips, label) in t:
-            data_time.update(time.time() - end)
+    with torch.no_grad():
+        with tqdm(enumerate(dataloader), total=len(dataloader), ncols=120) as t:
+            for i, (feat_clips, label) in t:
+                data_time.update(time.time() - end)
 
-            feat_clips = feat_clips.cuda().squeeze(0)
-            label = label.float().squeeze(0)
-            feat_clips = feat_clips.unsqueeze(1)
+                feat_clips = feat_clips.to(device).squeeze(0)
+                label = label.float().squeeze(0)
+                feat_clips = feat_clips.unsqueeze(1)
 
-            output_segmentation, output_spotting = model(feat_clips)
+                output_segmentation, output_spotting = model(feat_clips)
 
-            timestamp_long = timestamps2long(
-                output_spotting.cpu().detach(),
-                label.size()[0],
-                chunk_size,
-                receptive_field,
-            )
-            _ = batch2long(
-                output_segmentation.cpu().detach(),
-                label.size()[0],
-                chunk_size,
-                receptive_field,
-            )
+                timestamp_long = timestamps2long(
+                    output_spotting.cpu().detach(),
+                    label.size()[0],
+                    chunk_size,
+                    receptive_field,
+                )
 
-            spotting_groundtruth_visibility.append(label)
-            spotting_predictions.append(timestamp_long)
+                _ = batch2long(
+                    output_segmentation.cpu().detach(),
+                    label.size()[0],
+                    chunk_size,
+                    receptive_field,
+                )
+
+                spotting_groundtruth_visibility.append(label)
+                spotting_predictions.append(timestamp_long)
 
     targets_numpy = []
     closests_numpy = []
@@ -203,7 +209,7 @@ def test(dataloader, model, model_name, save_predictions=False):
     for target, detection in zip(spotting_groundtruth_visibility, spotting_predictions):
         target_numpy = target.numpy()
         targets_numpy.append(target_numpy)
-        detections_numpy.append(NMS(detection.numpy(), 5 * model.framerate))
+        detections_numpy.append(NMS(detection.numpy(), 40 * model.framerate))
         closest_numpy = np.zeros(target_numpy.shape) - 1
         for c in np.arange(target_numpy.shape[-1]):
             indexes = np.where(target_numpy[:, c] != 0)[0].tolist()

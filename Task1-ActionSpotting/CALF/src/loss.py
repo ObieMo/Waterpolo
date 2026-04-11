@@ -19,7 +19,8 @@ class ContextAwareLoss(torch.nn.Module):
 
     def forward(self, gt_label, pred_score):
 
-        K = self.K
+        # K = self.K
+        K = self.K.to(gt_label.device)
         hit_radius = self.hit_radius
         miss_radius = self.miss_radius
 
