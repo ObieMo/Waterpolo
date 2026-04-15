@@ -26,6 +26,16 @@ The model predicts action locations over time from precomputed video features. T
 
 - `Task1-ActionSpotting/CALF/src/main_waterpolo.py`
 
+## Current Results
+
+Using the current 2-class waterpolo setup, the latest reported evaluation results are:
+
+- Average mAP: `0.49`
+- `GOAL` mAP: `0.63`
+- `MissedShot` mAP: `0.34`
+
+These values correspond to the current training configuration described below.
+
 ## Repository Structure
 
 ```text
@@ -116,8 +126,13 @@ Train or resume the waterpolo spotting model with:
 python src\main_waterpolo.py `
   --dataset_path "YOUR PATH" `
   --model_name CALF_benchmark_waterpolo_init `
-  --load_weights model `
-  --max_epochs 1001 `
+  --LR 0.0001 `
+  --chunks_per_epoch 1000 `
+  --patience 10 `
+  --batch_size 8 `
+  --chunk_size 40 `
+  --receptive_field 10 `
+  --max_epochs 150 `
   --max_num_worker 0
 ```
 
@@ -131,8 +146,20 @@ Notes:
 
 - `--dataset_path` points to the dataset root containing `train`, `valid`, and `test`
 - `--model_name` selects the model folder inside `Task1-ActionSpotting/CALF/models`
-- `--load_weights model` resolves to `models/<model_name>/checkpoints/model.pth.tar`
 - outputs and checkpoints are written under `Task1-ActionSpotting/CALF/models` and `Task1-ActionSpotting/CALF/outputs`
+
+### Selected Parameters
+
+The current training setup uses:
+
+- `--LR 0.0001`: lower learning rate for more stable optimization on the small dataset
+- `--chunks_per_epoch 1000`: limits the number of sampled chunks per epoch
+- `--patience 10`: reduces the learning rate sooner when validation loss stalls
+- `--batch_size 8`: smaller batch size suited to the current experiment setup
+- `--chunk_size 40`: shorter temporal chunks
+- `--receptive_field 10`: smaller temporal context around each chunk prediction
+
+This configuration is the one associated with the current reported `0.49` average mAP result.
 
 ## Main Files
 

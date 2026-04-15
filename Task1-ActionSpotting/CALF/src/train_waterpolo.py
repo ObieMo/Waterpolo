@@ -31,42 +31,70 @@ def trainer(
     logging.info("start training")
 
     best_loss = 9e99
-    best_metric = -1
+    best_metric = float("-inf")
 
     checkpoint_dir = os.path.join("models", model_name, "checkpoints")
     os.makedirs(checkpoint_dir, exist_ok=True)
+    best_model_path = os.path.join("models", model_name, "model.pth.tar")
+    best_loss_path = os.path.join(checkpoint_dir, "best_loss.pth.tar")
+    evaluation_frequency = max(1, evaluation_frequency)
+
+    logging.info(
+        "Full validation metric will run every %d epoch(s). Best model uses validation mAP.",
+        evaluation_frequency,
+    )
 
     for epoch in range(start_epoch, max_epochs):
-        best_model_path = os.path.join("models", model_name, "model.pth.tar")
-
-        loss_training = train(
+        loss_training, loss_training_seg, loss_training_spot = train(
             train_loader, model, criterion, weights, optimizer, epoch + 1, device, train=True
         )
-        loss_validation = train(
+        loss_validation, loss_validation_seg, loss_validation_spot = train(
             val_loader, model, criterion, weights, optimizer, epoch + 1, device, train=False
+        )
+
+        logging.info(
+            (
+                "Epoch %d summary | "
+                "train total: %.4e seg: %.4e spot: %.4e | "
+                "val total: %.4e seg: %.4e spot: %.4e"
+            ),
+            epoch + 1,
+            loss_training,
+            loss_training_seg,
+            loss_training_spot,
+            loss_validation,
+            loss_validation_seg,
+            loss_validation_spot,
         )
 
         if writer is not None:
             writer.add_scalar("loss/train", loss_training, epoch + 1)
             writer.add_scalar("loss/val", loss_validation, epoch + 1)
+            writer.add_scalar("loss_seg/train", loss_training_seg, epoch + 1)
+            writer.add_scalar("loss_seg/val", loss_validation_seg, epoch + 1)
+            writer.add_scalar("loss_spot/train", loss_training_spot, epoch + 1)
+            writer.add_scalar("loss_spot/val", loss_validation_spot, epoch + 1)
             writer.add_scalar("optimizer/lr", optimizer.param_groups[0]["lr"], epoch + 1)
+
+        is_better = loss_validation < best_loss
+        if is_better:
+            best_loss = loss_validation
 
         state = {
             "epoch": epoch + 1,
             "state_dict": model.state_dict(),
             "best_loss": best_loss,
+            "best_metric": best_metric,
             "optimizer": optimizer.state_dict(),
         }
         os.makedirs(os.path.join("models", model_name), exist_ok=True)
         torch.save(state, os.path.join(checkpoint_dir, "latest.pth.tar"))
 
-        is_better = loss_validation < best_loss
-        best_loss = min(loss_validation, best_loss)
+        if is_better:
+            torch.save(state, best_loss_path)
 
-        if is_better and evaluation_frequency > max_epochs:
-            torch.save(state, best_model_path)
-
-        if epoch % evaluation_frequency == 0 and epoch != 0:
+        should_evaluate = (epoch + 1) % evaluation_frequency == 0 or (epoch + 1) == max_epochs
+        if should_evaluate:
             performance_validation = test(val_metric_loader, model, model_name, device=device)[0]
             logging.info(
                 "Validation performance at epoch %s -> %s",
@@ -77,9 +105,17 @@ def trainer(
                 writer.add_scalar("mAP/val", performance_validation, epoch + 1)
 
             is_better_metric = performance_validation > best_metric
-            best_metric = max(performance_validation, best_metric)
+            if is_better_metric:
+                best_metric = performance_validation
 
-            if is_better_metric and evaluation_frequency <= max_epochs:
+            if is_better_metric:
+                state = {
+                    "epoch": epoch + 1,
+                    "state_dict": model.state_dict(),
+                    "best_loss": best_loss,
+                    "best_metric": best_metric,
+                    "optimizer": optimizer.state_dict(),
+                }
                 torch.save(state, best_model_path)
                 performance_test = test(
                     test_loader, model, model_name, save_predictions=True, device=device
@@ -158,7 +194,7 @@ def train(dataloader, model, criterion, weights, optimizer, epoch, device, train
             desc += f"Loss Spot {losses_spotting.avg:.4e} "
             t.set_description(desc)
 
-    return losses.avg
+    return losses.avg, losses_segmentation.avg, losses_spotting.avg
 
 
 def test(dataloader, model, model_name, save_predictions=False, device=None):

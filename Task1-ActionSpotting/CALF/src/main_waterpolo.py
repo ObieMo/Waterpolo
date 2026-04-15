@@ -137,7 +137,7 @@ def main(args):
             criterion_spotting = SpottingLoss(
                 lambda_coord=args.lambda_coord, lambda_noobj=args.lambda_noobj
             )
-            optimizer = torch.optim.Adam(
+            optimizer = torch.optim.AdamW(
                 model.parameters(),
                 lr=args.LR,
                 betas=(0.9, 0.999),
@@ -237,7 +237,7 @@ if __name__ == "__main__":
 
     parser.add_argument("--num_features", required=False, type=int, default=512)
     parser.add_argument("--chunks_per_epoch", required=False, type=int, default=18000)
-    parser.add_argument("--evaluation_frequency", required=False, type=int, default=20)
+    parser.add_argument("--evaluation_frequency", required=False, type=int, default=2)
     parser.add_argument("--dim_capsule", required=False, type=int, default=16)
     parser.add_argument("--framerate", required=False, type=int, default=2)
     parser.add_argument("--chunk_size", required=False, type=int, default=120)

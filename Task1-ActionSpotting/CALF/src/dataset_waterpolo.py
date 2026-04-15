@@ -55,7 +55,7 @@ class WaterpoloClips(Dataset):
         chunks_per_epoch=6000,
         event_dictionary=None,
         k_parameters=None,
-        num_detections=15,
+        num_detections=5,
     ):
         self.path = path
         self.features = features
@@ -185,7 +185,7 @@ class WaterpoloClipsTesting(Dataset):
         chunk_size=240,
         receptive_field=80,
         event_dictionary=None,
-        num_detections=15,
+        num_detections=5,
     ):
         self.path = path
         self.features = features
