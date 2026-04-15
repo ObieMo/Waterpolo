@@ -81,6 +81,60 @@ Each annotation entry includes fields such as:
 - `vote_hits`
 - `valid_reads`
 
+## Conversion For The Pipeline
+
+The generated `annotations.json` file is an intermediate annotation file, not the final format expected by the spotting pipeline.
+
+Why conversion is needed:
+
+- `annotations.json` contains a lot of extra fields used for annotation and OCR debugging
+- the training pipeline only needs a compact `Labels.json`-style structure
+- the current spotting setup only uses two labels:
+  - `GOAL`
+  - `MissedShot`
+
+To convert the annotator output into pipeline-ready JSON, use:
+
+- `Annotator/Converter/convert.py`
+
+What `convert.py` does:
+
+1. Reads the annotation rows from input JSON files.
+2. Keeps only rows whose event code belongs to one of the supported classes.
+3. Maps raw event codes to the 2 pipeline labels.
+4. Drops all unused metadata fields.
+5. Writes a compact output JSON with:
+   - `gameTime`
+   - `label`
+   - `position`
+   - `timeSec`
+   - `code`
+
+Current code mapping in `convert.py`:
+
+- `GA`, `GE`, `GC`, `5` -> `GOAL`
+- `SA`, `MX`, `BR` -> `MissedShot`
+
+Everything else is ignored.
+
+The output format is:
+
+```json
+{
+  "annotations": [
+    {
+      "gameTime": "00:12:34",
+      "label": "GOAL",
+      "position": "12345",
+      "timeSec": 754,
+      "code": "GA"
+    }
+  ]
+}
+```
+
+This converted file is the one you should then use as the label file for the spotting pipeline.
+
 ## Running
 
 Run from the `Annotator` folder:
@@ -95,8 +149,23 @@ If you only want to pick and inspect the clock ROI on the first frame:
 python picker.py
 ```
 
+To convert a folder of annotator JSON files into pipeline-ready JSON files:
+
+```bash
+cd Converter
+python convert.py
+```
+
+By default, `convert.py` reads from:
+
+- `input_jsons`
+
+and writes to:
+
+- `output_jsons`
+
 ## Notes
 
 - The OCR model is loaded with `torch.hub` from the PARSeq repository.
 - The annotator resumes automatically if `scan_state.json` already exists.
-- The script does not directly write final `Labels.json` files for training; it produces intermediate matched annotations in `annotations.json`.
+- The script does not directly write final `Labels.json` files for training; it produces intermediate matched annotations in `annotations.json`, which should be converted with `Annotator/Converter/convert.py`.
