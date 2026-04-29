@@ -98,8 +98,10 @@ class VideoFeatureExtractor():
 
             logging.info(f"features {features.shape}, fps={features.shape[0]/duration}")
 
-        # save the featrue in .npy format
-        os.makedirs(os.path.dirname(path_features_output), exist_ok=True)
+        # Save either into a folder path or directly into the current directory.
+        output_dir = os.path.dirname(path_features_output)
+        if output_dir:
+            os.makedirs(output_dir, exist_ok=True)
         np.save(path_features_output, features)
 
 
@@ -135,6 +137,17 @@ class PCAReducer():
         if self.pca is not None:
             feat = self.pca.transform(feat)
         np.save(output_features, feat)
+
+
+def _normalize_optional_path(path_value):
+    if path_value is None:
+        return None
+
+    normalized = str(path_value).strip()
+    if normalized == "" or normalized.lower() in {"none", "null"}:
+        return None
+
+    return normalized
 
 
 if __name__ == "__main__":
@@ -174,9 +187,11 @@ if __name__ == "__main__":
 
     # PCA reduction
     parser.add_argument('--PCA', type=str, default="pca_512_TF2.pkl",
-                        help="Pickle with pre-computed PCA")
+                        help="Pickle with pre-computed PCA. Use --no_pca or pass an empty string to disable.")
     parser.add_argument('--PCA_scaler', type=str, default="average_512_TF2.pkl",
-                        help="Pickle with pre-computed PCA scaler")
+                        help="Pickle with pre-computed PCA scaler. Use --no_pca or pass an empty string to disable.")
+    parser.add_argument('--no_pca', action="store_true",
+                        help="Disable PCA reduction and save raw 2048-D ResNet features.")
                         
     args = parser.parse_args()
     # print(args)
@@ -187,6 +202,12 @@ if __name__ == "__main__":
             logging.StreamHandler()
         ])
 
+    if args.no_pca:
+        args.PCA = None
+        args.PCA_scaler = None
+    else:
+        args.PCA = _normalize_optional_path(args.PCA)
+        args.PCA_scaler = _normalize_optional_path(args.PCA_scaler)
 
     if args.GPU >= 0:
         os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
